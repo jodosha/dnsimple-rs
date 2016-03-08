@@ -1,0 +1,11 @@
+HTTP/1.1 401 Unauthorized
+Server: nginx
+Date: Mon, 28 Dec 2015 13:44:31 GMT
+Content-Type: application/json; charset=utf-8
+Connection: keep-alive
+Status: 401 Unauthorized
+Cache-Control: no-cache
+X-Request-Id: f8a21a21-dc63-4451-9bf3-99824d9d14c5
+X-Runtime: 0.009355
+
+{"message":"Authentication failed"}

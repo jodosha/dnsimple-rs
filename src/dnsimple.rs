@@ -109,21 +109,41 @@ mod tests {
     use dnsimple::*;
     use hyper;
 
+    use std::env;
+    use std::error::Error;
+    use std::fs::File;
+    use std::io::prelude::*;
+    use std::path::Path;
+    use std::path::PathBuf;
+    use std::io::BufReader;
+
+    fn http_response_fixture(path: &'static str) -> String {
+        let mut full_path = PathBuf::new();
+        let root = env::current_dir().unwrap();
+        full_path.push(root);
+        full_path.push("fixtures.http");
+        full_path.push(path);
+
+        let path    = Path::new(&full_path);
+        let display = path.display();
+
+        let file = match File::open(&path) {
+            Err(why) => panic!("couldn't open {}: {}", display, Error::description(&why)),
+            Ok(file) => file,
+        };
+
+        let buf = BufReader::new(file);
+        let s = buf.lines().map(|l| l.expect("Could not parse line") + "\r\n").collect();
+
+        return s
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // GENERIC HTTP TESTS                                                     /
+    ///////////////////////////////////////////////////////////////////////////
+
     mock_connector!(MockSuccessHeaders {
-        "https://api.dnsimple.com" => "HTTP/1.1 200 OK\r\n\
-                                       Server: nginx\r\n\
-                                       Date: Mon, 28 Dec 2015 11:15:18 GMT\r\n\
-                                       Content-Type: application/json; charset=utf-8\r\n\
-                                       Connection: keep-alive\r\n\
-                                       Status: 200 OK\r\n\
-                                       X-RateLimit-Limit: 4000\r\n\
-                                       X-RateLimit-Remaining: 3999\r\n\
-                                       X-RateLimit-Reset: 1451301317\r\n\
-                                       ETag: W/\"8ddafbf56b04655d328ab078abe2e08d\"\r\n\
-                                       Cache-Control: max-age=0, private, must-revalidate\r\n\
-                                       X-Request-Id: 2bbc52dd-df8e-4a2a-9266-9979cb4cf30a\r\n\
-                                       X-Runtime: 0.016579\r\n\
-                                       Strict-Transport-Security: max-age=31536000\r\n\r\n"
+        "https://api.dnsimple.com" => http_response_fixture("whoami/success.http")
     });
 
     #[test]
@@ -138,13 +158,13 @@ mod tests {
         assert_eq!(response.header("Unknown"),                   None);
         assert_eq!(response.header("Content-Type"),              Some("application/json; charset=utf-8"));
         assert_eq!(response.header("Cache-Control"),             Some("max-age=0, private, must-revalidate"));
-        assert_eq!(response.header("X-Request-Id"),              Some("2bbc52dd-df8e-4a2a-9266-9979cb4cf30a"));
-        assert_eq!(response.header("Date"),                      Some("Mon, 28 Dec 2015 11:15:18 GMT"));
+        assert_eq!(response.header("X-Request-Id"),              Some("15a7f3a5-7ee5-4e36-ac5a-8c21c2e1fffd"));
+        assert_eq!(response.header("Date"),                      Some("Fri, 18 Dec 2015 15:19:37 GMT"));
         assert_eq!(response.header("Strict-Transport-Security"), Some("max-age=31536000"));
         assert_eq!(response.header("X-RateLimit-Limit"),         Some("4000"));
-        assert_eq!(response.header("X-RateLimit-Remaining"),     Some("3999"));
-        assert_eq!(response.header("X-RateLimit-Reset"),         Some("1451301317"));
-        assert_eq!(response.header("ETag"),                      Some("W/\"8ddafbf56b04655d328ab078abe2e08d\""));
+        assert_eq!(response.header("X-RateLimit-Remaining"),     Some("3991"));
+        assert_eq!(response.header("X-RateLimit-Reset"),         Some("1450451976"));
+        assert_eq!(response.header("ETag"),                      Some("W/\"5ea6326bc1a8e83e5c156c564f2559f0\""));
     }
 
     #[test]
@@ -164,7 +184,7 @@ mod tests {
         let client = Client::with_client("abc123", c);
         let response = client.whoami();
 
-        assert_eq!(response.rate_limit_remaining(), Some(3999));
+        assert_eq!(response.rate_limit_remaining(), Some(3991));
     }
 
     #[test]
@@ -174,21 +194,11 @@ mod tests {
         let client = Client::with_client("abc123", c);
         let response = client.whoami();
 
-        assert_eq!(response.rate_limit_reset(), Some(1451301317));
+        assert_eq!(response.rate_limit_reset(), Some(1450451976));
     }
 
     mock_connector!(MockUnauthorizedResponse {
-        "https://api.dnsimple.com" => "HTTP/1.1 401 Unauthorized\r\n\
-                                       Server: nginx\r\n\
-                                       Date: Mon, 28 Dec 2015 13:44:31 GMT\r\n\
-                                       Content-Type: application/json; charset=utf-8\r\n\
-                                       Connection: keep-alive\r\n\
-                                       Status: 401 Unauthorized\r\n\
-                                       Cache-Control: no-cache\r\n\
-                                       X-Request-Id: f8a21a21-dc63-4451-9bf3-99824d9d14c5\r\n\
-                                       X-Runtime: 0.009355\r\n\
-                                       \r\n\
-                                       {\"message\":\"Authentication failed\"}"
+        "https://api.dnsimple.com" => http_response_fixture("whoami/unauthorized.http")
     });
 
     #[test]
@@ -206,21 +216,11 @@ mod tests {
         assert_eq!(response.rate_limit_remaining(), None);
         assert_eq!(response.rate_limit_reset(),     None);
 
-        assert_eq!(response.body, "{\"message\":\"Authentication failed\"}");
+        assert_eq!(response.body, "{\"message\":\"Authentication failed\"}\r\n");
     }
 
     mock_connector!(MockErrorResponse {
-        "https://api.dnsimple.com" => "HTTP/1.1 500 Internal Server Error\r\n\
-                                       Server: nginx\r\n\
-                                       Date: Mon, 28 Dec 2015 14:18:07 GMT\r\n\
-                                       Content-Type: application/json; charset=utf-8\r\n\
-                                       Connection: keep-alive\r\n\
-                                       Status: 500 Internal Server Error\r\n\
-                                       Cache-Control: no-cache\r\n\
-                                       X-Request-Id: ed8acc9f-9272-4286-b6fb-0ee79b10e180\r\n\
-                                       X-Runtime: 0.008398\r\n\
-                                       \r\n\
-                                       {\"message\":\"Internal Server Error\"}"
+        "https://api.dnsimple.com" => http_response_fixture("whoami/internal_server_error.http")
     });
 
     #[test]
@@ -238,6 +238,6 @@ mod tests {
         assert_eq!(response.rate_limit_remaining(), None);
         assert_eq!(response.rate_limit_reset(),     None);
 
-        assert_eq!(response.body, "{\"message\":\"Internal Server Error\"}");
+        assert_eq!(response.body, "{\"message\":\"Internal Server Error\"}\r\n");
     }
 }
