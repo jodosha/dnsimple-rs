@@ -1,3 +1,4 @@
 language: rust
+after_script: 'echo `env`'
 rust:
   - stable
