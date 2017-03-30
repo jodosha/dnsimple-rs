@@ -124,11 +124,9 @@ mod tests {
         full_path.push("fixtures.http");
         full_path.push(path);
 
-        let path    = Path::new(&full_path);
-        let display = path.display();
-
+        let path = Path::new(&full_path);
         let file = match File::open(&path) {
-            Err(why) => panic!("couldn't open {}: {}", display, Error::description(&why)),
+            Err(why) => panic!("couldn't open {}: {}", path.display(), Error::description(&why)),
             Ok(file) => file,
         };
 
@@ -142,13 +140,13 @@ mod tests {
     // GENERIC HTTP TESTS                                                     /
     ///////////////////////////////////////////////////////////////////////////
 
-    mock_connector!(MockSuccessHeaders {
+    mock_connector!(MockStream {
         "https://api.dnsimple.com" => http_response_fixture("whoami/success.http")
     });
 
     #[test]
     fn test_response_headers() {
-        let c = hyper::client::Client::with_connector(MockSuccessHeaders::default());
+        let c = hyper::client::Client::with_connector(MockStream::default());
 
         let client = Client::with_client("abc123", c);
         let response = client.whoami();
@@ -169,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_response_rate_limit() {
-        let c = hyper::client::Client::with_connector(MockSuccessHeaders::default());
+        let c = hyper::client::Client::with_connector(MockStream::default());
 
         let client = Client::with_client("abc123", c);
         let response = client.whoami();
@@ -179,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_response_rate_limit_remaining() {
-        let c = hyper::client::Client::with_connector(MockSuccessHeaders::default());
+        let c = hyper::client::Client::with_connector(MockStream::default());
 
         let client = Client::with_client("abc123", c);
         let response = client.whoami();
@@ -189,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_response_rate_limit_reset() {
-        let c = hyper::client::Client::with_connector(MockSuccessHeaders::default());
+        let c = hyper::client::Client::with_connector(MockStream::default());
 
         let client = Client::with_client("abc123", c);
         let response = client.whoami();

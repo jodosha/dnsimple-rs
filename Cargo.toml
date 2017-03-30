@@ -15,8 +15,8 @@ path = "src/lib.rs"
 name = "dnsimple"
 
 [dependencies.hyper]
-version = "0.7.1"
+version = "0.10.5"
 
 [dev-dependencies]
-yup-hyper-mock = "1.3.0"
-log = "0.3.4"
+yup-hyper-mock = "2.0.0"
+log = "0.3.7"
